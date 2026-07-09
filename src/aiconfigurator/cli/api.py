@@ -35,6 +35,81 @@ DEFAULT_PREFILL_LATENCY_CORRECTION_SCALE = 1.1
 DEFAULT_DECODE_LATENCY_CORRECTION_SCALE = 1.08
 
 
+def gpu_sizer(
+    model_path: str,
+    isl: int, # Input Sequence Length
+    osl: int, # Output Sequence Length
+    batch_size: int = 128, # Number of Simultaneous Requests
+    tps_per_user: int = 4, # Tokens Per Second Per User 
+    max_ttft: float = 1000, # In ms
+    max_e2e_latency: float = 20000, # In ms
+    model_agg_mode: str = "agg",
+    system: str = "h200_sxm",
+  ):
+    """
+    Find minimum TP size that meets throughput requirement.
+    """
+    from aiconfigurator.cli.api import cli_estimate, cli_default
+
+    lowest_gpu_count = 10000
+    best_result = None
+
+    # Try increasing TP sizes until throughput requirement is met
+    for tp_size in [1, 2, 4, 8, 16]:
+        for dp_size in range(16):
+            for pp_size in [1, 2, 4, 8, 16]:
+                if tp_size * dp_size * pp_size > lowest_gpu_count: continue
+                try:
+                    result = cli_estimate(
+                                model_path=model_path,
+                                system_name=system,
+                                mode=model_agg_mode,
+                                tp_size=tp_size,
+                                batch_size=batch_size,
+                                isl=isl,
+                                osl=osl,
+                                attention_dp_size=dp_size,
+                                pp_size=pp_size,
+                    )
+                except Exception as e:
+                    continue
+
+                ttft_latency = result.ttft
+                request_latency = result.request_latency
+
+                if ttft_latency < max_ttft and \
+                    request_latency < max_e2e_latency and \
+                    tps_per_user < result.tokens_per_second_per_user:
+                    if lowest_gpu_count > result.num_total_gpus:
+                        lowest_gpu_count = result.num_total_gpus
+                        best_result = result
+                    elif lowest_gpu_count == result.num_total_gpus and \
+                            best_result.tokens_per_second_per_user < result.tokens_per_second_per_user and \
+                            best_result.ttft < result.ttft and \
+                            best_result.request_latency < result.request_latency:
+                        best_result = result
+
+    if best_result is None:
+        return None  # No configuration meets requirement
+    else:
+        results = {
+                    'gpus_needed': best_result.num_total_gpus,
+                    'ttft_latency': best_result.ttft,
+                    'concurrency': best_result.concurrency,
+                    'tpot_ms': best_result.tpot,
+                    'request_latency': best_result.request_latency,
+                    'tokens_per_second': best_result.tokens_per_second,
+                    'tokens_per_second_per_gpu': best_result.tokens_per_second_per_gpu,
+                    'tokens_per_second_per_user': best_result.tokens_per_second_per_user,
+                    'num_total_gpus': best_result.num_total_gpus,
+                    'memory': best_result.memory,
+                    'tp_size': best_result.tp_size,
+                    'pp_size': best_result.pp_size,
+                    'dp_size': int(best_result.num_total_gpus / best_result.tp_size / best_result.pp_size),
+                }
+        return results
+
+
 def cli_support(
     model_path: str,
     system: str,
@@ -1795,6 +1870,7 @@ from aiconfigurator.generator.api import generate_naive_config as cli_generate
 __all__ = [
     "CLIResult",
     "EstimateResult",
+    "gpu_sizer",
     "cli_default",
     "cli_estimate",
     "cli_exp",
