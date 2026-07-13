@@ -40,7 +40,14 @@ app = FastAPI(
 
 
 @app.get("/sla/supported_models")
-def list_supported_models():
+def list_supported_models(
+    username: str = "default",
+    password: str = "default",
+):
+    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+        pass
+    else:
+        raise Exception("Invalid username or password")
     return Response(
         content=orjson.dumps({"model list:": sorted(get_default_models())}),
         media_type="application/json",
@@ -63,7 +70,14 @@ def post_gpu_sizer(
     e2e: int = Body(20000, description="end to end latency limit"),
     batch_size: int = Body(128, description="number of simultaneous requests"),
     model_agg_mode: str = Body("agg", description="model aggregation mode, agg, afd"),
+    username: str = "default",
+    password: str = "default",
 ):
+    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+        pass
+    else:
+        raise Exception("Invalid username or password")
+
     try:
         print()
         result_dict = gpu_sizer(model_path, isl, osl, batch_size, tps_per_user, ttft, e2e, model_agg_mode, system)
@@ -88,7 +102,14 @@ def post_sla(
     tpot: int = Body(10, description="inter token latency limit"),
     quant: str = Body("fp8", description="quantization mode: fp8, fp8_block, bfloat16"),
     kvcache_quant: str = Body("fp8", description="kvcache quantization mode, fp8, int8, bfloat16"),
+    username: str = "default",
+    password: str = "default",
 ):
+    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+        pass
+    else:
+        raise Exception("Invalid username or password")
+
     logging.basicConfig(level=logging.INFO)
     result_dict = {}
     try:
