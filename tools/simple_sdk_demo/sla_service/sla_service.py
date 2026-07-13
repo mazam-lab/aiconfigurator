@@ -12,6 +12,7 @@ import pandas as pd
 import uvicorn
 from fastapi import Body, FastAPI, Response
 
+from aiconfigurator.cli.api import gpu_sizer
 from aiconfigurator.sdk import common
 from aiconfigurator.sdk.backends.factory import get_backend
 from aiconfigurator.sdk.common import get_default_models
@@ -44,6 +45,32 @@ def list_supported_models():
         content=orjson.dumps({"model list:": sorted(get_default_models())}),
         media_type="application/json",
     )
+
+
+@app.post("/gpu_sizer")
+def post_gpu_sizer(
+    system: str = Body(
+        "h200_sxm",
+        description="hardware name, h200_sxm, h100_sxm, h100_pcie, b200_sxm, gb200, a100_sxm, a100_pcie, l4, a30",
+    ),
+    # backend: str = Body("trtllm", description="backend name, trtllm, sglang, vllm"),
+    version: str = Body("0.20.0", description="trtllm version, 0.20.0"),
+    model_path: str = Body("QWEN3_32B", description="model name"),
+    isl: int = Body(4000, description="input sequence length"),
+    osl: int = Body(500, description="output sequence length"),
+    ttft: int = Body(3000, description="first token latency limit"),
+    tps_per_user: int = Body(4, description="tokens per second per user minimum"),
+    e2e: int = Body(20000, description="end to end latency limit"),
+    batch_size: int = Body(128, description="number of simultaneous requests"),
+    model_agg_mode: str = Body("agg", description="model aggregation mode, agg, afd"),
+):
+    try:
+        print()
+        result_dict = gpu_sizer(model_path, isl, osl, batch_size, tps_per_user, ttft, e2e, model_agg_mode, system)
+    except Exception as e:
+        print(e)
+        result_dict = {"error": str(e)}
+    return result_dict
 
 
 @app.post("/sla")
@@ -171,4 +198,5 @@ def parse(args):
 
 if __name__ == "__main__":
     args = parse(sys.argv[1:])
+    print(args)
     uvicorn.run(app, host=args.server_name, port=args.server_port)

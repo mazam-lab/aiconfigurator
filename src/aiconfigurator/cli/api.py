@@ -93,18 +93,18 @@ def gpu_sizer(
         return None  # No configuration meets requirement
     else:
         results = {
-                    'gpus_needed': best_result.num_total_gpus,
-                    'ttft_latency': best_result.ttft,
-                    'concurrency': best_result.concurrency,
-                    'tpot_ms': best_result.tpot,
-                    'request_latency': best_result.request_latency,
-                    'tokens_per_second': best_result.tokens_per_second,
-                    'tokens_per_second_per_gpu': best_result.tokens_per_second_per_gpu,
-                    'tokens_per_second_per_user': best_result.tokens_per_second_per_user,
-                    'num_total_gpus': best_result.num_total_gpus,
-                    'memory': best_result.memory,
-                    'tp_size': best_result.tp_size,
-                    'pp_size': best_result.pp_size,
+                    'gpus_needed': int(best_result.num_total_gpus),
+                    'ttft_latency': float(best_result.ttft),
+                    'concurrency': float(best_result.concurrency),
+                    'tpot_ms': float(best_result.tpot),
+                    'request_latency': float(best_result.request_latency),
+                    'tokens_per_second': float(best_result.tokens_per_second),
+                    'tokens_per_second_per_gpu': float(best_result.tokens_per_second_per_gpu),
+                    'tokens_per_second_per_user': float(best_result.tokens_per_second_per_user),
+                    'num_total_gpus': int(best_result.num_total_gpus),
+                    'memory': float(best_result.memory),
+                    'tp_size': int(best_result.tp_size),
+                    'pp_size': int(best_result.pp_size),
                     'dp_size': int(best_result.num_total_gpus / best_result.tp_size / best_result.pp_size),
                 }
         return results
