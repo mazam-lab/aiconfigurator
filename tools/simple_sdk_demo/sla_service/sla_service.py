@@ -21,6 +21,7 @@ from aiconfigurator.sdk.inference_session import InferenceSession
 from aiconfigurator.sdk.models import check_is_moe, get_model
 from aiconfigurator.sdk.perf_database import get_database
 from aiconfigurator.sdk.utils import enumerate_parallel_config
+from aiconfigurator.sdk.memory import estimate_kv_cache
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,12 @@ app = FastAPI(
     default_response_class=PrettyJSONResponse,
 )
 
-
 @app.get("/sla/supported_models")
 def list_supported_models(
     username: str = "default",
     password: str = "default",
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+    if username == open(f"~/aiconfigurator/username.txt", "r").read() and password == open(f"~/aiconfigurator/password.txt", "r").read():
         pass
     else:
         raise Exception("Invalid username or password")
@@ -52,6 +52,87 @@ def list_supported_models(
         content=orjson.dumps({"model list:": sorted(get_default_models())}),
         media_type="application/json",
     )
+
+
+
+@app.post("/kv_cache_calc")
+def post_kv_cache_calc(
+    model_path: str = Body("QWEN3_32B", description="model name"),
+    system: str = Body(
+        "h200_sxm",
+        description="hardware name, h200_sxm, h100_sxm, h100_pcie, b200_sxm, gb200, a100_sxm, a100_pcie, l4, a30",
+    ),
+    backend: str = Body("vllm", description="backend name, trtllm, sglang, vllm"),
+    backend_version: str | None = Body(None),
+    *,
+    max_num_tokens: int = Body(8192, description="max number of tokens"),
+    max_batch_size: int = Body(128, description="max batch size"),
+    memory_fraction_kind: str = Body("of_total", description="memory fraction kind, of_total for vllm/sglang, of_free for trtllm"),
+    memory_fraction_value: float = Body(1.0, description="Ratio of memory [0.0, 1.0.] to use for kv cache. Defaults to 1.0 to show max memory"),
+    tp_size: int = Body(1),
+    pp_size: int = Body(1),
+    attention_dp_size: int = Body(1),
+    moe_tp_size: int | None = Body(None),
+    moe_ep_size: int | None = Body(None),
+    gemm_quant_mode: str | None = Body(None),
+    moe_quant_mode: str | None = Body(None),
+    kvcache_quant_mode: str | None = Body(None),
+    fmha_quant_mode: str | None = Body(None),
+    comm_quant_mode: str | None = Body(None),
+    nextn: int = Body(0),
+    nextn_accept_rates: list[float] | None = Body(None),
+    systems_path: str | None = Body(None),
+    gpu_memory_capacity_bytes_override: int | None = Body(None),
+    tolerance_fraction: float | None = Body(None),
+    naive_kv_reservation: float = Body(0.80),
+    allow_naive_fallback: bool = Body(False),
+    allow_hf_config_download: bool = Body(False),    
+    username: str = "default",
+    password: str = "default",
+):
+    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+        pass
+    else:
+        raise Exception("Invalid username or password")
+    
+    if backend_version is None:
+        if backend == "vllm":
+            backend_version = "0.22.0"
+        elif backend == "sglang":
+            backend_version = "0.5.10"
+        elif backend == "trtllm":
+            backend_version = "1.3.0rc10"
+
+    cache_data = estimate_kv_cache(
+        model_path=model_path,
+        system=system,
+        backend=backend,
+        backend_version=backend_version,
+        max_num_tokens=max_num_tokens,
+        max_batch_size=max_batch_size,
+        memory_fraction_kind=memory_fraction_kind,
+        memory_fraction_value=memory_fraction_value,
+        tp_size=tp_size,
+        pp_size=pp_size,
+        attention_dp_size=attention_dp_size,
+        moe_tp_size=moe_tp_size,
+        moe_ep_size=moe_ep_size,
+        gemm_quant_mode=gemm_quant_mode,
+        moe_quant_mode=moe_quant_mode,
+        kvcache_quant_mode=kvcache_quant_mode,
+        fmha_quant_mode=fmha_quant_mode,
+        comm_quant_mode=comm_quant_mode,
+        nextn=nextn,
+        nextn_accept_rates=nextn_accept_rates,
+        systems_path=systems_path,
+        gpu_memory_capacity_bytes_override=gpu_memory_capacity_bytes_override,
+        tolerance_fraction=tolerance_fraction,
+        naive_kv_reservation=naive_kv_reservation,
+        allow_naive_fallback=allow_naive_fallback,
+        allow_hf_config_download=allow_hf_config_download,
+    )
+
+    return cache_data
 
 
 @app.post("/gpu_sizer")
