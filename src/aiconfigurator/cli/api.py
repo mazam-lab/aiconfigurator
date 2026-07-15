@@ -29,6 +29,7 @@ from aiconfigurator.sdk.config_builders import build_model_config as _build_mode
 from aiconfigurator.sdk.models import check_is_moe, resolve_context_fmha_compat
 from aiconfigurator.sdk.task_v2 import Task
 
+
 # Default per-phase latency-correction scales for single-point disagg estimates.
 # (Migrated from the legacy V1 task module; same values as Task's field defaults.)
 DEFAULT_PREFILL_LATENCY_CORRECTION_SCALE = 1.1
@@ -45,20 +46,32 @@ def gpu_sizer(
     max_e2e_latency: float = 20000, # In ms
     model_agg_mode: str = "agg",
     system: str = "h200_sxm",
+    max_gpu_count: int=128,
   ):
     """
     Find minimum TP size that meets throughput requirement.
     """
-    from aiconfigurator.cli.api import cli_estimate, cli_default
 
-    lowest_gpu_count = 10000
+    lowest_gpu_count = max_gpu_count + 1
     best_result = None
 
+    tp_size_list = [1]
+    pp_size_list = [1]
+    while tp_size_list[-1] * 2 <= max_gpu_count:
+        tp_size_list.append(tp_size_list[-1] * 2)
+        pp_size_list.append(pp_size_list[-1] * 2)
+
+    max_necessary_pp = pp_size_list[-1]
+
     # Try increasing TP sizes until throughput requirement is met
-    for tp_size in [1, 2, 4, 8, 16]:
-        for dp_size in range(16):
-            for pp_size in [1, 2, 4, 8, 16]:
-                if tp_size * dp_size * pp_size > lowest_gpu_count: continue
+    for tp_size in tp_size_list:
+        while pp_size_list[-1] < max_necessary_pp:
+            pp_size_list = pp_size_list[:-1]
+        for pp_size in pp_size_list:
+            pp_successful = False
+            for dp_size in range(1, 17):
+                if (tp_size * dp_size * pp_size) > lowest_gpu_count: 
+                    continue
                 try:
                     result = cli_estimate(
                                 model_path=model_path,
@@ -71,8 +84,10 @@ def gpu_sizer(
                                 attention_dp_size=dp_size,
                                 pp_size=pp_size,
                     )
+                    pp_successful = True
                 except Exception as e:
-                    continue
+                    print(e)
+                    break
 
                 ttft_latency = result.ttft
                 request_latency = result.request_latency
@@ -88,6 +103,10 @@ def gpu_sizer(
                             best_result.ttft < result.ttft and \
                             best_result.request_latency < result.request_latency:
                         best_result = result
+
+                max_necessary_pp = pp_size
+            if pp_successful:
+                break
 
     if best_result is None:
         return None  # No configuration meets requirement
