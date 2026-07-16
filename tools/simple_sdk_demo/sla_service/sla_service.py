@@ -90,7 +90,7 @@ def post_kv_cache_calc(
     username: str = Body("default"),
     password: str = Body("default"),
 ):
-    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
         password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
@@ -164,7 +164,7 @@ def post_gpu_sizer(
     backend_name: str = Body("trtllm"),
     backend_version: str | None = Body(None),
 ):
-    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
         password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
@@ -210,7 +210,7 @@ def post_sla(
     username: str = Body("default"),
     password: str = Body("default"),
 ):
-    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
         password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
