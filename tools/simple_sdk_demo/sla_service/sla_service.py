@@ -6,6 +6,7 @@ import copy
 import logging
 import sys
 from typing import Any
+import os
 
 import orjson
 import pandas as pd
@@ -54,7 +55,6 @@ def list_supported_models(
     )
 
 
-
 @app.post("/kv_cache_calc")
 def post_kv_cache_calc(
     model_path: str = Body("QWEN3_32B", description="model name"),
@@ -90,7 +90,8 @@ def post_kv_cache_calc(
     username: str = Body("default"),
     password: str = Body("default"),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+        password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")
@@ -163,7 +164,8 @@ def post_gpu_sizer(
     backend_name: str = Body("trtllm"),
     backend_version: str | None = Body(None),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+        password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")
@@ -208,7 +210,8 @@ def post_sla(
     username: str = Body("default"),
     password: str = Body("default"),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
+    if username == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:8] and \
+        password == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")
