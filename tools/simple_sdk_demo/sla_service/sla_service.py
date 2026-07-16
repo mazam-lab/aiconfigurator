@@ -87,10 +87,10 @@ def post_kv_cache_calc(
     naive_kv_reservation: float = Body(0.80),
     allow_naive_fallback: bool = Body(False),
     allow_hf_config_download: bool = Body(False),    
-    username: str = "default",
-    password: str = "default",
+    username: str = Body("default"),
+    password: str = Body("default"),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")
@@ -151,17 +151,35 @@ def post_gpu_sizer(
     e2e: int = Body(20000, description="end to end latency limit"),
     batch_size: int = Body(128, description="number of simultaneous requests"),
     model_agg_mode: str = Body("agg", description="model aggregation mode, agg, afd"),
-    username: str = "default",
-    password: str = "default",
+    username: str = Body("default"),
+    password: str = Body("default"),
+    target_concurrency: int = Body(0),
+    max_gpu_count: int=Body(128),
+    database_mode: str = Body("HYBRID"),
+    backend_name: str = Body("trtllm"),
+    backend_version: str | None = Body(None),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")
 
     try:
         print()
-        result_dict = gpu_sizer(model_path, isl, osl, batch_size, tps_per_user, ttft, e2e, model_agg_mode, system)
+        result_dict = gpu_sizer(model_path=model_path,
+                                isl=isl,
+                                osl=osl,
+                                batch_size=batch_size,
+                                tps_per_user=tps_per_user,
+                                max_ttft=ttft,
+                                max_e2e_latency=e2e,
+                                model_agg_mode=model_agg_mode,
+                                system=system,
+                                max_gpu_count=max_gpu_count,
+                                database_mode=database_mode,
+                                backend_name=backend_name,
+                                backend_version=backend_version,
+                                target_concurrency=target_concurrency)
     except Exception as e:
         print(e)
         result_dict = {"error": str(e)}
@@ -183,10 +201,10 @@ def post_sla(
     tpot: int = Body(10, description="inter token latency limit"),
     quant: str = Body("fp8", description="quantization mode: fp8, fp8_block, bfloat16"),
     kvcache_quant: str = Body("fp8", description="kvcache quantization mode, fp8, int8, bfloat16"),
-    username: str = "default",
-    password: str = "default",
+    username: str = Body("default"),
+    password: str = Body("default"),
 ):
-    if username == open("~/aiconfigurator/username.txt", "r").read() and password == open("~/aiconfigurator/password.txt", "r").read():
+    if username == open("~/aiconfigurator/username.txt", "r").read()[:8] and password == open("~/aiconfigurator/password.txt", "r").read()[:12]:
         pass
     else:
         raise Exception("Invalid username or password")

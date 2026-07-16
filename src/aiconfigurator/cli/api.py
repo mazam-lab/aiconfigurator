@@ -41,12 +41,16 @@ def gpu_sizer(
     isl: int, # Input Sequence Length
     osl: int, # Output Sequence Length
     batch_size: int = 128, # Number of Simultaneous Requests
-    tps_per_user: int = 4, # Tokens Per Second Per User 
-    max_ttft: float = 1000, # In ms
-    max_e2e_latency: float = 20000, # In ms
+    tps_per_user: int = 0, # Tokens Per Second Per User 
+    max_ttft: float = 1000000, # In ms
+    max_e2e_latency: float = 200000000, # In ms
+    target_concurrency: int = 0,
     model_agg_mode: str = "agg",
     system: str = "h200_sxm",
     max_gpu_count: int=128,
+    database_mode: str = "HYBRID",
+    backend_name: str = "trtllm",
+    backend_version: str | None = None,
   ):
     """
     Find minimum TP size that meets throughput requirement.
@@ -83,6 +87,9 @@ def gpu_sizer(
                                 osl=osl,
                                 attention_dp_size=dp_size,
                                 pp_size=pp_size,
+                                database_mode=database_mode,
+                                backend_name=backend_name,
+                                backend_version=backend_version,
                     )
                     pp_successful = True
                 except Exception as e:
@@ -92,9 +99,10 @@ def gpu_sizer(
                 ttft_latency = result.ttft
                 request_latency = result.request_latency
 
-                if ttft_latency < max_ttft and \
-                    request_latency < max_e2e_latency and \
-                    tps_per_user < result.tokens_per_second_per_user:
+                if ttft_latency <= max_ttft and \
+                    request_latency <= max_e2e_latency and \
+                    tps_per_user <= result.tokens_per_second_per_user and \
+                    target_concurrency <= result.concurrency:
                     if lowest_gpu_count > result.num_total_gpus:
                         lowest_gpu_count = result.num_total_gpus
                         best_result = result
