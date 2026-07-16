@@ -103,34 +103,38 @@ def post_kv_cache_calc(
         elif backend == "trtllm":
             backend_version = "1.3.0rc10"
 
-    cache_data = estimate_kv_cache(
-        model_path=model_path,
-        system=system,
-        backend=backend,
-        backend_version=backend_version,
-        max_num_tokens=max_num_tokens,
-        max_batch_size=max_batch_size,
-        memory_fraction_kind=memory_fraction_kind,
-        memory_fraction_value=memory_fraction_value,
-        tp_size=tp_size,
-        pp_size=pp_size,
-        attention_dp_size=attention_dp_size,
-        moe_tp_size=moe_tp_size,
-        moe_ep_size=moe_ep_size,
-        gemm_quant_mode=gemm_quant_mode,
-        moe_quant_mode=moe_quant_mode,
-        kvcache_quant_mode=kvcache_quant_mode,
-        fmha_quant_mode=fmha_quant_mode,
-        comm_quant_mode=comm_quant_mode,
-        nextn=nextn,
-        nextn_accept_rates=nextn_accept_rates,
-        systems_path=systems_path,
-        gpu_memory_capacity_bytes_override=gpu_memory_capacity_bytes_override,
-        tolerance_fraction=tolerance_fraction,
-        naive_kv_reservation=naive_kv_reservation,
-        allow_naive_fallback=allow_naive_fallback,
-        allow_hf_config_download=allow_hf_config_download,
-    )
+    try:
+        cache_data = estimate_kv_cache(
+            model_path=model_path,
+            system=system,
+            backend=backend,
+            backend_version=backend_version,
+            max_num_tokens=max_num_tokens,
+            max_batch_size=max_batch_size,
+            memory_fraction_kind=memory_fraction_kind,
+            memory_fraction_value=memory_fraction_value,
+            tp_size=tp_size,
+            pp_size=pp_size,
+            attention_dp_size=attention_dp_size,
+            moe_tp_size=moe_tp_size,
+            moe_ep_size=moe_ep_size,
+            gemm_quant_mode=gemm_quant_mode,
+            moe_quant_mode=moe_quant_mode,
+            kvcache_quant_mode=kvcache_quant_mode,
+            fmha_quant_mode=fmha_quant_mode,
+            comm_quant_mode=comm_quant_mode,
+            nextn=nextn,
+            nextn_accept_rates=nextn_accept_rates,
+            systems_path=systems_path,
+            gpu_memory_capacity_bytes_override=gpu_memory_capacity_bytes_override,
+            tolerance_fraction=tolerance_fraction,
+            naive_kv_reservation=naive_kv_reservation,
+            allow_naive_fallback=allow_naive_fallback,
+            allow_hf_config_download=allow_hf_config_download,
+        )
+    except ValueError as e:
+        print(e)
+        cache_data = {"error": str(e)}
 
     return cache_data
 
