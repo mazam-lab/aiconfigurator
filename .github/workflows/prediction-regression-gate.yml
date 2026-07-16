@@ -9,12 +9,14 @@ name: "Prediction Regression Gate"
 # then diff. OK -> not-OK transitions block; drift and coverage changes are
 # reported for review.
 #
-# Rollout is two PRs: this file ships with workflow_dispatch only (manual
-# validation); a follow-up PR adds the pull_request trigger and demotes the
-# old accuracy-regression job. The ref-resolution below already handles the
-# pull_request event so that follow-up is trigger-only.
+# Rollout was two PRs: PR 1 shipped the harness with workflow_dispatch only;
+# this is PR 2, which enables the pull_request trigger (the "AIC Prediction
+# Regression Gate" job below is the required check) and demotes the old
+# accuracy-regression job to a nightly schedule. Reverting this PR restores
+# the dispatch-only state without touching the harness.
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       old-ref:
@@ -85,8 +87,8 @@ jobs:
           python -m pip install --upgrade pip
           # Split-era revisions need the payload-bearing Maturin core installed
           # first; newer revisions bundle it in the root package.
-          if grep -q 'build-backend = "maturin"' src/aiconfigurator-core/pyproject.toml 2>/dev/null; then
-            python -m pip install -e src/aiconfigurator-core
+          if grep -q 'build-backend = "maturin"' aic-core/pyproject.toml 2>/dev/null; then
+            python -m pip install -e aic-core
           fi
           python -m pip install -e ".[dev]"
 
