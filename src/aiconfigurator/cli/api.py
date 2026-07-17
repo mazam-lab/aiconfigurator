@@ -2074,20 +2074,3 @@ __all__ = [
     "cli_generate",
     "cli_support",
 ]
-
-if __name__ == "__main__":
-    result = gpu_sizer(model_path="google/gemma-4-26B-A4B",
-                        isl=4000,
-                        osl=96,
-                        batch_size=1,
-                        tps_per_user=100,
-                        max_ttft=8000,
-                        max_e2e_latency=50000,
-                        target_concurrency=0,
-                        system="h200_sxm",
-                        max_gpu_count=128,
-                        database_mode="HYBRID",
-                        backend_name="vllm",
-                        backend_version="0.24.0",
-                    )
-    print(result)
