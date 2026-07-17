@@ -24,6 +24,7 @@ from aiconfigurator.cli.main import (
 )
 from aiconfigurator.cli.report_and_save import save_results
 from aiconfigurator.sdk.config import ModelConfig
+from aiconfigurator.sdk.utils import get_model_config_from_model_path
 from aiconfigurator.sdk.config_builders import apply_nextn as _apply_nextn
 from aiconfigurator.sdk.config_builders import build_model_config as _build_model_config
 from aiconfigurator.sdk.models import check_is_moe, resolve_context_fmha_by_data, resolve_dsv4_moe_arch
@@ -34,6 +35,133 @@ from aiconfigurator.sdk.task_v2 import Task
 # (Migrated from the legacy V1 task module; same values as Task's field defaults.)
 DEFAULT_PREFILL_LATENCY_CORRECTION_SCALE = 1.1
 DEFAULT_DECODE_LATENCY_CORRECTION_SCALE = 1.08
+
+
+def gpu_sizer_moe(
+    model_path: str,
+    isl: int, # Input Sequence Length
+    osl: int, # Output Sequence Length
+    batch_size: int = 128, # Number of Simultaneous Requests
+    tps_per_user: int = 0, # Tokens Per Second Per User 
+    max_ttft: float = 1000000, # In ms
+    max_e2e_latency: float = 200000000, # In ms
+    target_concurrency: int = 0,
+    model_agg_mode: str = "agg",
+    system: str = "h200_sxm",
+    max_gpu_count: int=128,
+    database_mode: str = "HYBRID",
+    backend_name: str = "vllm",
+    backend_version: str | None = "0.24.0",
+):
+    """
+    Find minimum TP size that meets throughput requirement.
+    """
+
+    lowest_gpu_count = max_gpu_count + 1
+    best_result = None
+    best_moe_ep_size = 0
+    best_moe_tp_size = 0
+
+    info = get_model_config_from_model_path("google/gemma-4-26B-A4B")
+    print(info["num_layers"])
+
+    # TODO: Use the factors of the number of layers for determining pp_size. 
+
+    tp_size_list = [1]
+    pp_size_list = [1]
+    while tp_size_list[-1] * 2 <= max_gpu_count:
+        tp_size_list.append(tp_size_list[-1] * 2)
+        pp_size_list.append(pp_size_list[-1] * 2)
+
+    max_necessary_pp = pp_size_list[-1]
+
+    # Try increasing TP sizes until throughput requirement is met
+    for tp_size in tp_size_list:
+        while pp_size_list[-1] < max_necessary_pp:
+            pp_size_list = pp_size_list[:-1]
+        for pp_size in pp_size_list:
+            pp_successful = False
+            for dp_size in range(1, 17):
+                total_gpus = tp_size * dp_size * pp_size
+                if total_gpus > lowest_gpu_count: 
+                    continue
+
+                moe_ep_successful = False
+                for moe_ep_size in range(1, (tp_size * dp_size) + 1):
+                    if (tp_size * dp_size) % moe_ep_size == 0:
+                        moe_tp_size = int((tp_size * dp_size) / moe_ep_size)
+                    else:
+                        continue
+                    try:
+                        result = cli_estimate(
+                                    model_path=model_path,
+                                    system_name=system,
+                                    mode=model_agg_mode,
+                                    tp_size=tp_size,
+                                    batch_size=batch_size,
+                                    isl=isl,
+                                    osl=osl,
+                                    attention_dp_size=dp_size,
+                                    pp_size=pp_size,
+                                    database_mode=database_mode,
+                                    backend_name=backend_name,
+                                    backend_version=backend_version,
+                                    moe_tp_size=moe_tp_size,
+                                    moe_ep_size=moe_ep_size,
+                        )
+                        moe_ep_successful = True
+                        break
+                    except Exception as e:
+                        print(e)
+                        break
+                if not moe_ep_successful:
+                    break
+                ttft_latency = result.ttft
+                request_latency = result.request_latency
+
+                if ttft_latency <= max_ttft and \
+                    request_latency <= max_e2e_latency and \
+                    tps_per_user <= result.tokens_per_second_per_user and \
+                    target_concurrency <= result.concurrency:
+                    if lowest_gpu_count > result.num_total_gpus:
+                        lowest_gpu_count = result.num_total_gpus
+                        best_result = result
+                        best_moe_ep_size = moe_ep_size
+                        best_moe_tp_size = moe_tp_size
+                    elif lowest_gpu_count == result.num_total_gpus and \
+                            best_result.tokens_per_second_per_user < result.tokens_per_second_per_user and \
+                            best_result.ttft < result.ttft and \
+                            best_result.request_latency < result.request_latency:
+                        best_result = result
+                        best_moe_ep_size = moe_ep_size
+                        best_moe_tp_size = moe_tp_size
+
+                max_necessary_pp = pp_size
+            if pp_successful:
+                break
+
+    if best_result is None:
+        return None  # No configuration meets requirement
+    else:
+        results = {
+                    'gpus_needed': int(best_result.num_total_gpus),
+                    'ttft_latency': float(best_result.ttft),
+                    'concurrency': float(best_result.concurrency),
+                    'tpot_ms': float(best_result.tpot),
+                    'request_latency': float(best_result.request_latency),
+                    'tokens_per_second': float(best_result.tokens_per_second),
+                    'tokens_per_second_per_gpu': float(best_result.tokens_per_second_per_gpu),
+                    'tokens_per_second_per_user': float(best_result.tokens_per_second_per_user),
+                    'num_total_gpus': int(best_result.num_total_gpus),
+                    'memory': float(best_result.memory),
+                    'tp_size': int(best_result.tp_size),
+                    'pp_size': int(best_result.pp_size),
+                    'dp_size': int(best_result.num_total_gpus / best_result.tp_size / best_result.pp_size),
+                    'moe_tp_size': int(best_moe_tp_size),
+                    'moe_ep_size': int(best_moe_ep_size),
+                }
+        return results
+
 
 
 def gpu_sizer(
@@ -49,12 +177,30 @@ def gpu_sizer(
     system: str = "h200_sxm",
     max_gpu_count: int=128,
     database_mode: str = "HYBRID",
-    backend_name: str = "trtllm",
-    backend_version: str | None = None,
+    backend_name: str = "vllm",
+    backend_version: str | None = "0.24.0",
   ):
     """
     Find minimum TP size that meets throughput requirement.
     """
+
+    if check_is_moe(model_path):
+        return gpu_sizer_moe(
+            model_path=model_path,
+            isl=isl,
+            osl=osl,
+            batch_size=batch_size,
+            tps_per_user=tps_per_user,
+            max_ttft=max_ttft,
+            max_e2e_latency=max_e2e_latency,
+            target_concurrency=target_concurrency,
+            model_agg_mode=model_agg_mode,
+            system=system,
+            max_gpu_count=max_gpu_count,
+            database_mode=database_mode,
+            backend_name=backend_name,
+            backend_version=backend_version,
+        )
 
     lowest_gpu_count = max_gpu_count + 1
     best_result = None
@@ -76,6 +222,7 @@ def gpu_sizer(
             for dp_size in range(1, 17):
                 if (tp_size * dp_size * pp_size) > lowest_gpu_count: 
                     continue
+
                 try:
                     result = cli_estimate(
                                 model_path=model_path,
@@ -1927,3 +2074,20 @@ __all__ = [
     "cli_generate",
     "cli_support",
 ]
+
+if __name__ == "__main__":
+    result = gpu_sizer(model_path="google/gemma-4-26B-A4B",
+                        isl=4000,
+                        osl=96,
+                        batch_size=1,
+                        tps_per_user=100,
+                        max_ttft=8000,
+                        max_e2e_latency=50000,
+                        target_concurrency=0,
+                        system="h200_sxm",
+                        max_gpu_count=128,
+                        database_mode="HYBRID",
+                        backend_name="vllm",
+                        backend_version="0.24.0",
+                    )
+    print(result)
