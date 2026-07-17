@@ -41,7 +41,7 @@ def gpu_sizer_moe(
     model_path: str,
     isl: int, # Input Sequence Length
     osl: int, # Output Sequence Length
-    batch_size: int = 128, # Number of Simultaneous Requests
+    batch_size: int = 1, # Number of Simultaneous Requests
     tps_per_user: int = 0, # Tokens Per Second Per User 
     max_ttft: float = 1000000, # In ms
     max_e2e_latency: float = 200000000, # In ms
@@ -164,7 +164,7 @@ def gpu_sizer(
     model_path: str,
     isl: int, # Input Sequence Length
     osl: int, # Output Sequence Length
-    batch_size: int = 128, # Number of Simultaneous Requests
+    batch_size: int = 1, # Number of Simultaneous Requests
     tps_per_user: int = 0, # Tokens Per Second Per User 
     max_ttft: float = 1000000, # In ms
     max_e2e_latency: float = 200000000, # In ms
