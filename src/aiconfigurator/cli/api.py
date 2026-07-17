@@ -126,8 +126,8 @@ def gpu_sizer_moe(
                         best_moe_tp_size = moe_tp_size
                     elif lowest_gpu_count == result.num_total_gpus and \
                             best_result.tokens_per_second_per_user < result.tokens_per_second_per_user and \
-                            best_result.ttft < result.ttft and \
-                            best_result.request_latency < result.request_latency:
+                            best_result.ttft > result.ttft and \
+                            best_result.request_latency > result.request_latency:
                         best_result = result
                         best_moe_ep_size = moe_ep_size
                         best_moe_tp_size = moe_tp_size
@@ -251,8 +251,8 @@ def gpu_sizer(
                         best_result = result
                     elif lowest_gpu_count == result.num_total_gpus and \
                             best_result.tokens_per_second_per_user < result.tokens_per_second_per_user and \
-                            best_result.ttft < result.ttft and \
-                            best_result.request_latency < result.request_latency:
+                            best_result.ttft > result.ttft and \
+                            best_result.request_latency > result.request_latency:
                         best_result = result
 
                 max_necessary_pp = pp_size
