@@ -61,10 +61,6 @@ def gpu_sizer_moe(
     best_result = None
     best_moe_ep_size = 0
     best_moe_tp_size = 0
-
-    info = get_model_config_from_model_path("google/gemma-4-26B-A4B")
-    print(info["num_layers"])
-
     # TODO: Use the factors of the number of layers for determining pp_size. 
 
     tp_size_list = [1]
