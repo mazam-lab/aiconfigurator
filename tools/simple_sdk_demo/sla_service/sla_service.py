@@ -171,6 +171,14 @@ def post_gpu_sizer(
     else:
         raise Exception("Invalid username or password")
 
+    if backend_version is None:
+        if backend_name == "vllm":
+            backend_version = "0.22.0"
+        elif backend_name == "sglang":
+            backend_version = "0.5.10"
+        elif backend_name == "trtllm":
+            backend_version = "1.3.0rc10"
+
     try:
         print()
         result_dict = gpu_sizer(model_path=model_path,
