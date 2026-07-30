@@ -23,6 +23,8 @@ from aiconfigurator.sdk.models import check_is_moe, get_model
 from aiconfigurator.sdk.perf_database import get_database
 from aiconfigurator.sdk.utils import enumerate_parallel_config
 from aiconfigurator.sdk.memory import estimate_kv_cache
+from aiconfigurator_core.sdk.perf_database import load_system_spec
+from aiconfigurator_core.sdk.common import SupportedSystems
 
 logger = logging.getLogger(__name__)
 
@@ -312,6 +314,51 @@ def post_sla(
         result_dict = {"error": str(e)}
 
     return result_dict
+
+@app.post("/get_hardware")
+def get_hardware(
+    system: str = Body("h200_sxm", description="hardware name, h200_sxm, h100_sxm, h100_pcie, b200_sxm, gb200, a100_sxm, a100_pcie, l4, a30"),
+    username: str = Body("default"),
+    password: str = Body("default"),
+):
+    if username[:6] == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
+        password[:12] == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
+        pass
+    else:
+        raise Exception("Invalid username or password")
+    data_dict = load_system_spec(system)
+    print(data_dict)
+    return data_dict['gpu']
+
+
+@app.post("/get_hardware_list")
+def get_hardware_list(
+    username: str = Body("default"),
+    password: str = Body("default"),
+):
+    if username[:6] == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
+        password[:12] == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
+        pass
+    else:
+        raise Exception("Invalid username or password")
+    gpu_list = SupportedSystems
+    print(gpu_list)
+    return gpu_list
+
+
+@app.post("/get_supported_models")
+def get_supported_models(
+    username: str = Body("default"),
+    password: str = Body("default"),
+):
+    if username[:6] == open(os.path.expanduser("~/aiconfigurator/username.txt"), "r").read()[:6] and \
+        password[:12] == open(os.path.expanduser("~/aiconfigurator/password.txt"), "r").read()[:12]:
+        pass
+    else:
+        raise Exception("Invalid username or password")
+    default_models = get_default_models()
+    print(default_models)
+    return default_models
 
 
 def parse(args):
