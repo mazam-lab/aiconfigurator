@@ -1745,7 +1745,10 @@ class PerfDatabase:
             for sibling_version in fw_versions:
                 if framework == backend_lower and sibling_version == self.version:
                     continue  # Active source already added as the primary.
-                sibling_path = _resolve_perf_data_path(os.path.join(fw_dir, sibling_version, op_file_basename))
+                sibling_version_dir = os.path.join(fw_dir, sibling_version)
+                if os.path.isfile(os.path.join(sibling_version_dir, "INCOMPLETE.txt")):
+                    continue
+                sibling_path = _resolve_perf_data_path(os.path.join(sibling_version_dir, op_file_basename))
                 if not os.path.isfile(sibling_path):
                     continue
                 sources.append((sibling_path, ks_filter))

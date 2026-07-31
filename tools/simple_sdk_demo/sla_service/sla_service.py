@@ -58,6 +58,7 @@ def list_supported_models(
 
 
 @app.post("/kv_cache_calc")
+@app.post("/memory_estimate")
 def post_kv_cache_calc(
     model_path: str = Body("QWEN3_32B", description="model name"),
     system: str = Body(
@@ -138,6 +139,7 @@ def post_kv_cache_calc(
     except ValueError as e:
         print(e)
         cache_data = {"error": str(e)}
+    cache_data['memoryBreakdown']['kvCacheBytes'] = cache_data['kvCache']['totalBytes']
 
     return cache_data
 
@@ -235,11 +237,11 @@ def post_sla(
         )
         runtime_config = RuntimeConfig(batch_size=1, isl=isl, osl=osl, ttft=ttft, tpot=tpot)
 
-        database = get_database(system, backend, version)
+        database = get_database(system, backend, version, database_mode="HYBRID")
         if database is None:
-            database = get_database(system, backend, "estimate", allow_missing_data=True)
+            database = get_database(system, backend, "estimate", allow_missing_data=True, database_mode="HYBRID")
             if database is not None:
-                database.set_default_database_mode(common.DatabaseMode.SOL)
+                database.set_default_database_mode(common.DatabaseMode.HYBRID)
         if database is None:
             raise ValueError(f"Failed to load database for system={system}, backend={backend}, version={version}")
         backend_instance = get_backend(backend)

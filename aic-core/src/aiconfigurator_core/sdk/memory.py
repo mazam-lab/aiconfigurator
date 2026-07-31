@@ -306,7 +306,8 @@ class KVCacheEstimator:
         model = get_model(model_path, model_config, backend)
         backend_obj = get_backend(backend)
         database = perf_database.get_database(
-            system, backend, backend_version, systems_paths=systems_path, allow_missing_data=True,
+            system, backend, backend_version, systems_paths=systems_path,
+            allow_missing_data=True, database_mode="HYBRID",
         )
 
         # num_tokens = max_num_tokens -> activations track BuildConfig.max_num_tokens
